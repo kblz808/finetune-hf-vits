@@ -3,7 +3,7 @@ import subprocess
 
 def uromanize(input_string, uroman_path):
     """Convert non-Roman strings to Roman using the `uroman` perl package."""
-    script_path = os.path.join(uroman_path, "bin", "uroman.pl")
+    script_path = os.path.join(uroman_path, "uroman", "uroman.pl")
 
     command = ["perl", script_path]
 
