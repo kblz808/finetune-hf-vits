@@ -587,23 +587,87 @@ def main():
     # 4. Load dataset
     raw_datasets = DatasetDict()
 
+    # if training_args.do_train:
+    #     print(data_args.dataset_name)
+    #     print(data_args.train_split_name)
+    #     print(model_args.token)
+    #     raw_datasets["train"] = load_dataset(
+    #         data_args.dataset_name,
+    #         data_args.dataset_config_name,
+    #         split=data_args.train_split_name,
+    #         cache_dir=model_args.cache_dir,
+    #         token=model_args.token,
+    #     )
+
+
+    # if training_args.do_eval:
+    #     raw_datasets["eval"] = load_dataset(
+    #         data_args.dataset_name,
+    #         data_args.dataset_config_name,
+    #         split=data_args.eval_split_name,
+    #         cache_dir=model_args.cache_dir,
+    #         token=model_args.token,
+    #     )
+    # 4. Load dataset
+    raw_datasets = DatasetDict()
+
     if training_args.do_train:
-        raw_datasets["train"] = load_dataset(
-            data_args.dataset_name,
-            data_args.dataset_config_name,
-            split=data_args.train_split_name,
-            cache_dir=model_args.cache_dir,
-            token=model_args.token,
-        )
+        # Check if dataset_name is a local directory
+        if os.path.isdir(data_args.dataset_name):
+            # Use load_from_disk for local datasets
+            from datasets import load_from_disk
+            logger.info(f"Loading dataset from disk: {data_args.dataset_name}")
+            dataset = load_from_disk(data_args.dataset_name)
+            
+            # Handle different dataset structures
+            if isinstance(dataset, DatasetDict):
+                if data_args.train_split_name in dataset:
+                    raw_datasets["train"] = dataset[data_args.train_split_name]
+                else:
+                    # Use first available split
+                    first_split = list(dataset.keys())[0]
+                    logger.info(f"No '{data_args.train_split_name}' split found, using '{first_split}' instead")
+                    raw_datasets["train"] = dataset[first_split]
+            else:
+                # Dataset without splits
+                logger.info("Dataset has no splits, using entire dataset for training")
+                raw_datasets["train"] = dataset
+        else:
+            # Original code for loading from Hugging Face datasets
+            raw_datasets["train"] = load_dataset(
+                data_args.dataset_name,
+                data_args.dataset_config_name,
+                split=data_args.train_split_name,
+                cache_dir=model_args.cache_dir,
+                token=model_args.token,
+            )
 
     if training_args.do_eval:
-        raw_datasets["eval"] = load_dataset(
-            data_args.dataset_name,
-            data_args.dataset_config_name,
-            split=data_args.eval_split_name,
-            cache_dir=model_args.cache_dir,
-            token=model_args.token,
-        )
+        # Similar approach for evaluation data
+        if os.path.isdir(data_args.dataset_name):
+            if "train" in raw_datasets and data_args.eval_split_name == data_args.train_split_name:
+                # Reuse train split if it's the same
+                raw_datasets["eval"] = raw_datasets["train"]
+            else:
+                # Try to load from the dataset we already loaded above
+                if not 'dataset' in locals():
+                    dataset = load_from_disk(data_args.dataset_name)
+                
+                if isinstance(dataset, DatasetDict) and data_args.eval_split_name in dataset:
+                    raw_datasets["eval"] = dataset[data_args.eval_split_name]
+                elif "train" in raw_datasets:
+                    # Fallback to train split
+                    logger.info(f"No '{data_args.eval_split_name}' split found, using 'train' for evaluation")
+                    raw_datasets["eval"] = raw_datasets["train"]
+        else:
+            # Original code
+            raw_datasets["eval"] = load_dataset(
+                data_args.dataset_name,
+                data_args.dataset_config_name,
+                split=data_args.eval_split_name,
+                cache_dir=model_args.cache_dir,
+                token=model_args.token,
+            )
 
     if data_args.audio_column_name not in next(iter(raw_datasets.values())).column_names:
         raise ValueError(
