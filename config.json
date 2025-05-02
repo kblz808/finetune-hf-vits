@@ -30,7 +30,7 @@
     "adam_beta1": 0.8,
     "adam_beta2": 0.99,
     "warmup_ratio": 0.05,
-    "group_by_length": true,
+    "group_by_length": false,
     "do_eval": true,
     "eval_steps": 50,
     "per_device_eval_batch_size": 16,

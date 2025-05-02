@@ -669,6 +669,7 @@ def main():
                 token=model_args.token,
             )
 
+
     if data_args.audio_column_name not in next(iter(raw_datasets.values())).column_names:
         raise ValueError(
             f"--audio_column_name '{data_args.audio_column_name}' not found in dataset '{data_args.dataset_name}'. "
@@ -764,7 +765,12 @@ def main():
             raw_datasets["train"] = raw_datasets["train"].select(range(data_args.max_train_samples))
 
         if data_args.max_eval_samples is not None:
-            raw_datasets["eval"] = raw_datasets["eval"].select(range(data_args.max_eval_samples))
+            # raw_datasets["eval"] = raw_datasets["eval"].select(range(data_args.max_eval_samples))
+            if "eval" in raw_datasets and data_args.max_eval_samples is not None:
+                 raw_datasets["eval"] = raw_datasets["eval"].select(range(data_args.max_eval_samples))
+            elif "train" in raw_datasets and training_args.do_eval:
+                logger.warning("No evaluation dataset found. Using training dataset for evaluation.")
+                raw_datasets["eval"] = raw_datasets["train"].select(range(min(data_args.max_eval_samples or len(raw_datasets["train"]), len(raw_datasets["train"]))))
 
     speaker_id_dict = {}
     new_num_speakers = 0
